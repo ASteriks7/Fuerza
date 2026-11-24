@@ -1,15 +1,17 @@
 import { Link, NavLink, Outlet, useLocation } from 'react-router';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Dumbbell, History, ListChecks, Settings, ChevronRight } from 'lucide-react';
+import { Dumbbell, History, ListChecks, Settings, ChevronRight, TrendingUp } from 'lucide-react';
 import { getActiveWorkout } from '../db/workouts';
 import type { Workout } from '../db/types';
 import { RestTimerBar, RestTimerEngine } from '../features/logger/RestTimer';
 import { useNow } from '../hooks/useNow';
+import { UpdateBanner } from './UpdateBanner';
 import { fmtDuration } from '../lib/format';
 
 const NAV = [
   { to: '/', label: 'Entrenar', icon: Dumbbell },
   { to: '/history', label: 'Historial', icon: History },
+  { to: '/progress', label: 'Progreso', icon: TrendingUp },
   { to: '/exercises', label: 'Ejercicios', icon: ListChecks },
   { to: '/settings', label: 'Ajustes', icon: Settings },
 ];
@@ -26,10 +28,11 @@ export function Layout() {
       </main>
 
       <div className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-lg">
+        {!inWorkout && <UpdateBanner />}
         {active && !inWorkout && <ActiveWorkoutPill workout={active} />}
         <RestTimerBar />
         {!inWorkout && (
-          <nav className="grid grid-cols-4 border-t border-line bg-bg/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
+          <nav className="grid grid-cols-5 border-t border-line bg-bg/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
             {NAV.map(({ to, label, icon: Icon }) => (
               <NavLink
                 key={to}

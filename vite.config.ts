@@ -15,7 +15,7 @@ export default defineConfig({
     // solo se pueden mostrar vía ServiceWorkerRegistration.showNotification().
     // El manifest completo e iconos llegan en la Fase 3.
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       injectRegister: false,
       devOptions: { enabled: true, type: 'module' },
       manifest: {
