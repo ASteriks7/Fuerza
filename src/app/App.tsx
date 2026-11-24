@@ -8,6 +8,7 @@ import { ExercisesPage } from '../features/exercises/ExercisesPage';
 import { SettingsPage } from '../features/settings/SettingsPage';
 import { RoutinesPage } from '../features/routines/RoutinesPage';
 import { RoutineEditorPage } from '../features/routines/RoutineEditorPage';
+import { ImportRoutinePage } from '../features/routines/ImportRoutinePage';
 
 const router = createBrowserRouter([
   {
@@ -24,6 +25,7 @@ const router = createBrowserRouter([
       { path: '/exercises', element: <ExercisesPage /> },
       { path: '/settings', element: <SettingsPage /> },
       { path: '/routines', element: <RoutinesPage /> },
+      { path: '/routines/import', element: <ImportRoutinePage /> },
       { path: '/routines/:id', element: <RoutineEditorPage /> },
       { path: '*', element: <Navigate to="/" replace /> },
     ],

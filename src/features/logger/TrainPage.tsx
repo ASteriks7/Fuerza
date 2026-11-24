@@ -67,6 +67,11 @@ export function TrainPage() {
             Aún no tienes rutinas. <span className="text-accent">Crea una</span> organizada por días.
           </Link>
         )}
+        {routines?.length === 0 && (
+          <Link to="/routines/import" className="card block p-4 text-muted">
+            O <span className="text-accent">importa una plantilla</span>: fuerza, powerlifting, halterofilia o potencia.
+          </Link>
+        )}
 
         {routines?.map((r) => (
           <div key={r.id} className="card p-3">

@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ChevronLeft, Copy, MoreVertical, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ChevronLeft, Copy, Download, MoreVertical, Pencil, Plus, Share2, Trash2 } from 'lucide-react';
 import { db } from '../../db/schema';
 import type { Routine } from '../../db/types';
 import { createRoutine, deleteRoutine, duplicateRoutine } from '../../db/routines';
+import { shareRoutine } from '../../db/routineIO';
 import { BottomSheet } from '../../components/ui/BottomSheet';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 
@@ -23,13 +24,24 @@ export function RoutinesPage() {
       </Link>
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-black">Rutinas</h1>
-        <button onClick={create} className="btn btn-primary h-11">
-          <Plus size={20} /> Nueva
-        </button>
+        <div className="flex gap-2">
+          <Link to="/routines/import" className="btn btn-ghost h-11 border border-line px-3">
+            <Download size={20} /> Importar
+          </Link>
+          <button onClick={create} className="btn btn-primary h-11 px-3">
+            <Plus size={20} /> Nueva
+          </button>
+        </div>
       </div>
 
       {routines?.length === 0 && (
-        <p className="py-10 text-center text-muted">Crea tu primera rutina organizada por días.</p>
+        <p className="py-10 text-center text-muted">
+          Crea tu primera rutina organizada por días o{' '}
+          <Link to="/routines/import" className="font-semibold text-accent">
+            importa una
+          </Link>{' '}
+          (plantillas de fuerza y halterofilia, texto, Excel o archivo).
+        </p>
       )}
 
       {routines?.map((r) => (
@@ -62,6 +74,16 @@ export function RoutinesPage() {
             }}
           >
             <Copy size={20} /> Duplicar
+          </button>
+          <button
+            className="btn btn-ghost justify-start"
+            onClick={async () => {
+              const r = menu;
+              setMenu(null);
+              if (r) await shareRoutine(r);
+            }}
+          >
+            <Share2 size={20} /> Compartir (archivo)
           </button>
           <button
             className="btn btn-danger justify-start"

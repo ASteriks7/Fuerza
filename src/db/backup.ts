@@ -1,5 +1,6 @@
 import { db } from './schema';
 import { syncSeedExercises } from './seed';
+import { shareFile } from '../lib/share';
 
 const TABLES = ['exercises', 'routines', 'workouts', 'sets', 'settings'] as const;
 type TableName = (typeof TABLES)[number];
@@ -19,14 +20,9 @@ export async function exportBackup(): Promise<Backup> {
   return { app: 'fuerza', version: 1, exportedAt: new Date().toISOString(), tables };
 }
 
+/** Guarda/comparte la copia (en la APK abre el menú Compartir: Drive, WhatsApp, Archivos…). */
 export function downloadJson(data: unknown, filename: string) {
-  const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  void shareFile(filename, JSON.stringify(data), 'application/json', 'Copia de seguridad de Fuerza');
 }
 
 export function parseBackup(text: string): Backup {
