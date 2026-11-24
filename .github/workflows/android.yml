@@ -1,0 +1,71 @@
+name: Compilar APK Android
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write # publicar la APK en la release "apk"
+
+concurrency:
+  group: apk
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npm test
+      # En la APK la web va empaquetada en la raíz (base '/').
+      - run: npm run build
+      - run: npx cap sync android
+
+      - name: Preparar clave de firma
+        env:
+          KEYSTORE_B64: ${{ secrets.FUERZA_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error::Falta el secreto FUERZA_KEYSTORE_BASE64 (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/fuerza.p12"
+
+      - name: Compilar APK firmada
+        working-directory: android
+        env:
+          FUERZA_KEYSTORE: ${{ runner.temp }}/fuerza.p12
+          FUERZA_KEYSTORE_PASSWORD: ${{ secrets.FUERZA_KEYSTORE_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon \
+            -PversionCode=${{ github.run_number }} \
+            -PversionName=1.${{ github.run_number }}
+          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/fuerza.apk"
+
+      - name: Publicar en la release "apk"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NOTES="Versión 1.${{ github.run_number }} · commit ${GITHUB_SHA::7}. Descarga fuerza.apk desde el teléfono e instálala."
+          if gh release view apk >/dev/null 2>&1; then
+            gh release upload apk "$RUNNER_TEMP/fuerza.apk" --clobber
+            gh release edit apk --title "Fuerza APK 1.${{ github.run_number }}" --notes "$NOTES"
+          else
+            gh release create apk "$RUNNER_TEMP/fuerza.apk" --title "Fuerza APK 1.${{ github.run_number }}" --notes "$NOTES" --latest
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fuerza-apk
+          path: ${{ runner.temp }}/fuerza.apk

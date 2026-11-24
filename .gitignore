@@ -2,3 +2,9 @@ node_modules
 dist
 dev-dist
 *.local
+
+# Claves de firma Android: nunca al repositorio
+*.p12
+*.jks
+*.keystore
+FUERZA_KEYSTORE*

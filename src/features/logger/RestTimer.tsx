@@ -4,7 +4,14 @@ import { useRestTimer } from '../../stores/restTimer';
 import { useSettings } from '../../db/settings';
 import { useNow } from '../../hooks/useNow';
 import { fmtClock } from '../../lib/format';
-import { beep, clearRestNotification, showRestNotification, vibrate, VIBRATE_REST_DONE } from '../../lib/alerts';
+import {
+  beep,
+  clearRestNotification,
+  scheduleRestNotification,
+  showRestNotification,
+  vibrate,
+  VIBRATE_REST_DONE,
+} from '../../lib/alerts';
 
 /** Si la app estuvo congelada y la alerta llega con más retraso que esto, no suena. */
 const MAX_LATE_MS = 15_000;
@@ -24,6 +31,11 @@ export function RestTimerEngine() {
   const settings = useSettings();
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
+
+  // APK: alarma nativa programada para endsAt (se reprograma con ±30 s; saltar la cancela).
+  useEffect(() => {
+    if (endsAt && !doneAt && settings.restNotify) scheduleRestNotification(endsAt);
+  }, [endsAt, doneAt, settings.restNotify]);
 
   useEffect(() => {
     if (!endsAt || doneAt) return;

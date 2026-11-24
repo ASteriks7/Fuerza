@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { BellRing, CalendarDays, ChevronRight, Disc3, Play, Plus, X } from 'lucide-react';
@@ -7,7 +7,7 @@ import { getActiveWorkout, startEmptyWorkout } from '../../db/workouts';
 import { startWorkoutFromRoutine } from '../../db/routines';
 import { PlateCalculator } from '../plates/PlateCalculator';
 import { saveSetting, useSettings } from '../../db/settings';
-import { notificationsSupported, requestNotifyPermission, unlockAudio } from '../../lib/alerts';
+import { notificationsDenied, notificationsSupported, requestNotifyPermission, unlockAudio } from '../../lib/alerts';
 import { useNow } from '../../hooks/useNow';
 import { fmtDuration } from '../../lib/format';
 
@@ -115,7 +115,12 @@ function NotifyPrompt() {
     }
   });
 
-  if (dismissed || settings.restNotify || !notificationsSupported() || Notification.permission === 'denied') {
+  const [denied, setDenied] = useState(true);
+  useEffect(() => {
+    void notificationsDenied().then(setDenied, () => setDenied(true));
+  }, []);
+
+  if (dismissed || denied || settings.restNotify || !notificationsSupported()) {
     return null;
   }
 

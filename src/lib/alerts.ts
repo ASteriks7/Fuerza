@@ -5,6 +5,22 @@
 //  - Notificación del sistema vía service worker: única forma de notificar en
 //    Chrome Android (new Notification() lanza error allí). Con la pantalla
 //    bloqueada es lo que hace vibrar/sonar el teléfono.
+//  - En la APK (Capacitor) la notificación se programa como alarma nativa al
+//    empezar el descanso: suena aunque Android congele o cierre la app.
+
+import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
+
+export const isNativeApp = Capacitor.isNativePlatform();
+const REST_ID = 1;
+const REST_CHANNEL = 'rest';
+
+// Las llamadas al puente nativo se encadenan para que un “cancelar” nunca
+// adelante a un “programar” posterior.
+let nativeQueue: Promise<unknown> = Promise.resolve();
+function enqueue(fn: () => Promise<unknown>) {
+  nativeQueue = nativeQueue.then(fn).catch(() => undefined);
+}
 
 let ctx: AudioContext | null = null;
 
@@ -51,10 +67,29 @@ export function vibrate(pattern: number | number[]) {
 }
 
 export function notificationsSupported(): boolean {
-  return 'Notification' in window && 'serviceWorker' in navigator;
+  return isNativeApp || ('Notification' in window && 'serviceWorker' in navigator);
+}
+
+/** true si el usuario bloqueó las notificaciones (no tiene sentido volver a pedirlas). */
+export async function notificationsDenied(): Promise<boolean> {
+  if (isNativeApp) return (await LocalNotifications.checkPermissions()).display === 'denied';
+  return notificationsSupported() && Notification.permission === 'denied';
 }
 
 export async function requestNotifyPermission(): Promise<boolean> {
+  if (isNativeApp) {
+    const res = await LocalNotifications.requestPermissions();
+    if (res.display !== 'granted') return false;
+    await LocalNotifications.createChannel({
+      id: REST_CHANNEL,
+      name: 'Fin del descanso',
+      description: 'Aviso cuando termina el descanso entre series',
+      importance: 5,
+      visibility: 1,
+      vibration: true,
+    });
+    return true;
+  }
   if (!notificationsSupported()) return false;
   if (Notification.permission === 'granted') return true;
   if (Notification.permission === 'denied') return false;
@@ -66,7 +101,27 @@ type AndroidNotificationOptions = NotificationOptions & {
   renotify?: boolean;
 };
 
+/** APK: programa la alarma nativa para endsAt (reemplaza la anterior). */
+export function scheduleRestNotification(endsAt: number) {
+  if (!isNativeApp) return;
+  enqueue(async () => {
+    await LocalNotifications.cancel({ notifications: [{ id: REST_ID }] });
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          id: REST_ID,
+          title: 'Descanso terminado',
+          body: 'Hora de la siguiente serie',
+          channelId: REST_CHANNEL,
+          schedule: { at: new Date(endsAt), allowWhileIdle: true },
+        },
+      ],
+    });
+  });
+}
+
 export async function showRestNotification() {
+  if (isNativeApp) return; // ya programada como alarma nativa
   if (!notificationsSupported() || Notification.permission !== 'granted') return;
   const reg = await navigator.serviceWorker.getRegistration();
   if (!reg) return;
@@ -81,6 +136,13 @@ export async function showRestNotification() {
 }
 
 export async function clearRestNotification() {
+  if (isNativeApp) {
+    enqueue(async () => {
+      await LocalNotifications.cancel({ notifications: [{ id: REST_ID }] });
+      await LocalNotifications.removeDeliveredNotifications({ notifications: [{ id: REST_ID, title: '', body: '' }] });
+    });
+    return;
+  }
   if (!notificationsSupported()) return;
   const reg = await navigator.serviceWorker.getRegistration();
   const list = await reg?.getNotifications({ tag: 'rest-timer' });

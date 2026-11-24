@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Fuerza</string>
+    <string name="title_activity_main">Fuerza</string>
+    <string name="package_name">io.github.asteriks7.fuerza</string>
+    <string name="custom_url_scheme">io.github.asteriks7.fuerza</string>
+</resources>

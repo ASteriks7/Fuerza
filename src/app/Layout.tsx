@@ -49,6 +49,8 @@ export function Layout() {
         )}
       </div>
 
+      {/* APK edge-to-edge: franja opaca bajo la barra de estado (0 px en navegador). */}
+      <div className="fixed inset-x-0 top-0 z-40 h-[env(safe-area-inset-top)] bg-bg" />
       <RestTimerEngine />
     </div>
   );
