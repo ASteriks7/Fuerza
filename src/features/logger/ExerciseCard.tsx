@@ -1,0 +1,211 @@
+import { useCallback, useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { ArrowDown, ArrowUp, Disc3, MoreVertical, Plus, Trash2 } from 'lucide-react';
+import { PlateCalculator } from '../plates/PlateCalculator';
+import type { Exercise, SetType, WorkoutSet } from '../../db/types';
+import { addSet, deleteSet, getPreviousSets, moveExercise, removeExercise, updateSet } from '../../db/workouts';
+import { RPE_VALUES, rirFromRpe, roundE1RM } from '../../domain/e1rm';
+import { bestSet } from '../../domain/volume';
+import { fmtNum } from '../../lib/format';
+import { SET_TYPE_ORDER, SET_TYPES, setLabels } from '../../lib/labels';
+import { BottomSheet } from '../../components/ui/BottomSheet';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { SET_GRID, SetRow } from './SetRow';
+
+interface Props {
+  workoutId: number;
+  exercise: Exercise;
+  sets: WorkoutSet[];
+  isFirst: boolean;
+  isLast: boolean;
+  restSec?: number;
+}
+
+type Sheet =
+  | { kind: 'type'; setId: number }
+  | { kind: 'rpe'; setId: number }
+  | { kind: 'menu' }
+  | { kind: 'plates' }
+  | null;
+
+export function ExerciseCard({ workoutId, exercise, sets, isFirst, isLast, restSec }: Props) {
+  const prevSets = useLiveQuery(() => getPreviousSets(exercise.id, workoutId), [exercise.id, workoutId]) ?? [];
+  const [sheet, setSheet] = useState<Sheet>(null);
+  const isBarbell = exercise.equipment === 'barbell';
+  // Peso para la calculadora: la siguiente serie pendiente (o su valor de la sesión anterior).
+  const nextIdx = sets.findIndex((s) => s.completedAt == null);
+  const plateWeight =
+    nextIdx >= 0 ? (sets[nextIdx].weight ?? prevSets[nextIdx]?.weight) : sets.at(-1)?.weight;
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const close = useCallback(() => setSheet(null), []);
+
+  const labels = setLabels(sets.map((s) => s.type));
+  const best = bestSet(sets);
+  const sheetSet = sheet && 'setId' in sheet ? sets.find((s) => s.id === sheet.setId) : undefined;
+
+  const pickType = (type: SetType) => {
+    if (sheetSet) void updateSet(sheetSet.id, { type });
+    close();
+  };
+  const pickRpe = (rpe: number | undefined) => {
+    if (sheetSet) void updateSet(sheetSet.id, { rpe });
+    close();
+  };
+
+  return (
+    <section className="card p-2">
+      <header className="flex items-center justify-between gap-2 px-1 pb-1">
+        <div className="min-w-0">
+          <h3 className="truncate text-lg font-bold text-accent">{exercise.name}</h3>
+          {best?.e1rm ? (
+            <p className="text-xs text-muted">Mejor e1RM hoy: {fmtNum(roundE1RM(best.e1rm))} kg</p>
+          ) : null}
+        </div>
+        <div className="flex shrink-0 items-center">
+          {isBarbell && (
+            <button
+              onClick={() => setSheet({ kind: 'plates' })}
+              className="flex h-11 items-center gap-1 rounded-lg px-2 text-sm font-semibold text-muted"
+              aria-label="Calculadora de discos"
+            >
+              <Disc3 size={20} /> Discos
+            </button>
+          )}
+          <button
+            onClick={() => setSheet({ kind: 'menu' })}
+            className="grid size-11 place-items-center text-muted"
+            aria-label="Opciones del ejercicio"
+          >
+            <MoreVertical size={22} />
+          </button>
+        </div>
+      </header>
+
+      <div className={`${SET_GRID} px-1 pb-1 text-[11px] font-semibold tracking-wide text-muted uppercase`}>
+        <span className="text-center">Serie</span>
+        <span>Anterior</span>
+        <span className="text-center">kg</span>
+        <span className="text-center">Reps</span>
+        <span className="text-center">RPE</span>
+        <span />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        {sets.map((s, i) => (
+          <SetRow
+            key={s.id}
+            set={s}
+            label={labels[i]}
+            prev={prevSets[i]}
+            exercise={exercise}
+            restSec={restSec}
+            onOpenType={(setId) => setSheet({ kind: 'type', setId })}
+            onOpenRpe={(setId) => setSheet({ kind: 'rpe', setId })}
+          />
+        ))}
+      </div>
+
+      <button onClick={() => addSet(workoutId, exercise.id)} className="btn btn-ghost mt-2 h-11 w-full text-sm">
+        <Plus size={18} /> Agregar serie
+      </button>
+
+      {/* Tipo de serie */}
+      <BottomSheet open={sheet?.kind === 'type'} onClose={close} title="Tipo de serie">
+        <div className="flex flex-col gap-2 pb-2">
+          {SET_TYPE_ORDER.map((t) => (
+            <button
+              key={t}
+              onClick={() => pickType(t)}
+              className={`btn justify-start bg-surface-2 ${sheetSet?.type === t ? 'ring-2 ring-accent' : ''}`}
+            >
+              <span className={`w-6 text-center font-bold ${SET_TYPES[t].color}`}>{SET_TYPES[t].short || '#'}</span>
+              {SET_TYPES[t].label}
+            </button>
+          ))}
+          <button
+            onClick={() => {
+              if (sheetSet) void deleteSet(sheetSet.id);
+              close();
+            }}
+            className="btn btn-danger mt-2 justify-start"
+          >
+            <Trash2 size={20} /> Eliminar serie
+          </button>
+        </div>
+      </BottomSheet>
+
+      {/* RPE */}
+      <BottomSheet open={sheet?.kind === 'rpe'} onClose={close} title="RPE">
+        <div className="grid grid-cols-3 gap-2 pb-2">
+          {RPE_VALUES.map((v) => (
+            <button
+              key={v}
+              onClick={() => pickRpe(v)}
+              className={`flex h-16 flex-col items-center justify-center rounded-xl ${
+                sheetSet?.rpe === v ? 'bg-accent text-accent-fg' : 'bg-surface-2'
+              }`}
+            >
+              <span className="text-xl font-bold tabular-nums">{fmtNum(v)}</span>
+              <span className="text-[11px] opacity-70">RIR {fmtNum(rirFromRpe(v))}</span>
+            </button>
+          ))}
+          <button onClick={() => pickRpe(undefined)} className="btn btn-ghost col-span-3 mt-1">
+            Sin RPE
+          </button>
+        </div>
+      </BottomSheet>
+
+      {/* Menú del ejercicio */}
+      <BottomSheet open={sheet?.kind === 'menu'} onClose={close} title={exercise.name}>
+        <div className="flex flex-col gap-2 pb-2">
+          <button
+            disabled={isFirst}
+            onClick={() => {
+              void moveExercise(workoutId, exercise.id, -1);
+              close();
+            }}
+            className="btn btn-ghost justify-start"
+          >
+            <ArrowUp size={20} /> Mover arriba
+          </button>
+          <button
+            disabled={isLast}
+            onClick={() => {
+              void moveExercise(workoutId, exercise.id, 1);
+              close();
+            }}
+            className="btn btn-ghost justify-start"
+          >
+            <ArrowDown size={20} /> Mover abajo
+          </button>
+          <button
+            onClick={() => {
+              close();
+              setConfirmRemove(true);
+            }}
+            className="btn btn-danger justify-start"
+          >
+            <Trash2 size={20} /> Quitar ejercicio
+          </button>
+        </div>
+      </BottomSheet>
+
+      <PlateCalculator
+        open={sheet?.kind === 'plates'}
+        onClose={close}
+        initialWeight={plateWeight}
+        barWeight={exercise.barWeight ?? 20}
+      />
+
+      <ConfirmDialog
+        open={confirmRemove}
+        onClose={() => setConfirmRemove(false)}
+        title="¿Quitar ejercicio?"
+        message={`Se eliminarán las ${sets.length} series de ${exercise.name} de esta sesión.`}
+        confirmLabel="Quitar"
+        danger
+        onConfirm={() => void removeExercise(workoutId, exercise.id)}
+      />
+    </section>
+  );
+}
