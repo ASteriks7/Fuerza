@@ -1,4 +1,4 @@
-import type { Equipment, ExerciseCategory, LoadTarget, SetType } from '../db/types';
+import type { Equipment, ExerciseCategory, LoadTarget, Muscle, SetType } from '../db/types';
 import { fmtNum } from './format';
 
 /** 80% · @8 · 100 kg */
@@ -23,7 +23,33 @@ export const CATEGORY_LABELS: Record<ExerciseCategory, string> = {
   legs: 'Piernas',
   upper: 'Brazos y hombros',
   core: 'Core',
+  olympic: 'Halterofilia',
+  plyo: 'Pliometría',
 };
+
+/** En orden anatómico (de arriba abajo, delante y detrás) para listas y resúmenes. */
+export const MUSCLE_LABELS: Record<Muscle, string> = {
+  chest: 'Pectoral',
+  frontDelts: 'Deltoide anterior',
+  sideDelts: 'Deltoide lateral',
+  rearDelts: 'Deltoide posterior',
+  triceps: 'Tríceps',
+  biceps: 'Bíceps',
+  forearms: 'Antebrazos',
+  traps: 'Trapecio',
+  upperBack: 'Espalda alta',
+  lats: 'Dorsales',
+  lowerBack: 'Lumbares',
+  abs: 'Abdominales',
+  obliques: 'Oblicuos',
+  glutes: 'Glúteos',
+  quads: 'Cuádriceps',
+  hamstrings: 'Isquiotibiales',
+  adductors: 'Aductores',
+  calves: 'Gemelos',
+};
+
+export const MUSCLES = Object.keys(MUSCLE_LABELS) as Muscle[];
 
 export const EQUIPMENT_LABELS: Record<Equipment, string> = {
   barbell: 'Barra',
@@ -31,6 +57,8 @@ export const EQUIPMENT_LABELS: Record<Equipment, string> = {
   machine: 'Máquina',
   cable: 'Polea',
   bodyweight: 'Peso corporal',
+  kettlebell: 'Kettlebell',
+  medball: 'Balón medicinal',
 };
 
 export const SET_TYPES: Record<SetType, { label: string; short: string; color: string }> = {

@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Check, Plus, Search } from 'lucide-react';
 import { db } from '../../db/schema';
 import type { Exercise, ExerciseCategory } from '../../db/types';
-import { CATEGORY_LABELS, EQUIPMENT_LABELS } from '../../lib/labels';
+import { CATEGORY_LABELS, EQUIPMENT_LABELS, MUSCLE_LABELS } from '../../lib/labels';
 
 interface Props {
   onSelect: (exercise: Exercise) => void;
@@ -20,6 +20,11 @@ const normalize = (s: string) =>
     .replace(/\p{Diacritic}/gu, '')
     .toLowerCase();
 
+function primaryText(e: Exercise, normalized = false): string {
+  const text = (e.muscles?.primary ?? []).map((mu) => MUSCLE_LABELS[mu]).join(', ');
+  return normalized ? normalize(text) : text;
+}
+
 export function ExerciseList({ onSelect, onCreate, disabledIds = [] }: Props) {
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<ExerciseCategory | 'all'>('all');
@@ -28,7 +33,8 @@ export function ExerciseList({ onSelect, onCreate, disabledIds = [] }: Props) {
   const filtered = useMemo(() => {
     const nq = normalize(q.trim());
     return (exercises ?? [])
-      .filter((e) => (cat === 'all' || e.category === cat) && (!nq || normalize(e.name).includes(nq)))
+      // La búsqueda también encuentra por músculo principal (p. ej. “gluteo”).
+      .filter((e) => (cat === 'all' || e.category === cat) && (!nq || normalize(e.name).includes(nq) || primaryText(e, true).includes(nq)))
       .sort((a, b) => {
         // Los tres levantamientos de competición primero, en orden S → B → D.
         const ra = SBD_RANK[a.sbdSlot ?? ''] ?? 9;
@@ -79,6 +85,7 @@ export function ExerciseList({ onSelect, onCreate, disabledIds = [] }: Props) {
                     {CATEGORY_LABELS[e.category]} · {EQUIPMENT_LABELS[e.equipment]}
                     {e.isCustom && ' · Personal'}
                   </span>
+                  {e.muscles && <span className="block truncate text-xs text-accent/80">{primaryText(e)}</span>}
                 </span>
                 {disabled && <Check size={20} className="shrink-0 text-ok" />}
               </button>

@@ -11,6 +11,7 @@ import { BottomSheet } from '../../components/ui/BottomSheet';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { ExercisePicker } from '../exercises/ExercisePicker';
 import { PlannedExerciseCard } from './PlannedExerciseCard';
+import { MuscleSummary } from './MuscleSummary';
 
 export function RoutineEditorPage() {
   const id = Number(useParams().id);
@@ -164,6 +165,8 @@ export function RoutineEditorPage() {
       {active && (
         <p className="text-center text-sm text-muted">Termina el entrenamiento en curso para empezar otro.</p>
       )}
+
+      <MuscleSummary routine={routine} dayIdx={idx} exercises={byId} />
 
       <ExercisePicker
         open={picker}

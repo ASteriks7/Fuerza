@@ -8,9 +8,37 @@ export type ExerciseCategory =
   | 'back'
   | 'legs'
   | 'upper'
-  | 'core';
+  | 'core'
+  | 'olympic'
+  | 'plyo';
 
-export type Equipment = 'barbell' | 'dumbbell' | 'machine' | 'cable' | 'bodyweight';
+export type Equipment = 'barbell' | 'dumbbell' | 'machine' | 'cable' | 'bodyweight' | 'kettlebell' | 'medball';
+
+export type Muscle =
+  | 'quads'
+  | 'hamstrings'
+  | 'glutes'
+  | 'adductors'
+  | 'calves'
+  | 'lowerBack'
+  | 'lats'
+  | 'upperBack'
+  | 'traps'
+  | 'chest'
+  | 'frontDelts'
+  | 'sideDelts'
+  | 'rearDelts'
+  | 'triceps'
+  | 'biceps'
+  | 'forearms'
+  | 'abs'
+  | 'obliques';
+
+/** Músculos principales (cuentan 1 serie) y secundarios (cuentan media). */
+export interface MuscleMap {
+  primary: Muscle[];
+  secondary: Muscle[];
+}
 
 export type SbdSlot = 'S' | 'B' | 'D';
 
@@ -25,6 +53,7 @@ export interface Exercise {
   barWeight?: number;
   /** 1RM manual (kg) para calcular cargas por %. Si no hay, se usa el mejor e1RM reciente. */
   oneRepMax?: number;
+  muscles?: MuscleMap;
   isCustom: boolean;
   /** 0 | 1 para poder indexarlo (IndexedDB no indexa booleanos). */
   archived: 0 | 1;

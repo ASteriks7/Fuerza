@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { db } from '../../db/schema';
-import type { Equipment, Exercise, ExerciseCategory } from '../../db/types';
+import type { Equipment, Exercise, ExerciseCategory, Muscle, MuscleMap } from '../../db/types';
 import { parseNum } from '../../lib/format';
-import { CATEGORY_LABELS, EQUIPMENT_LABELS } from '../../lib/labels';
+import { CATEGORY_LABELS, EQUIPMENT_LABELS, MUSCLE_LABELS, MUSCLES } from '../../lib/labels';
 import { BottomSheet } from '../../components/ui/BottomSheet';
 
 interface Props {
@@ -17,11 +17,21 @@ interface Props {
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as ExerciseCategory[];
 const EQUIPMENT = Object.keys(EQUIPMENT_LABELS) as Equipment[];
 
+/** ninguno → principal → secundario → ninguno */
+function cycleMuscle(cur: MuscleMap, mu: Muscle): MuscleMap {
+  const primary = cur.primary.filter((x) => x !== mu);
+  const secondary = cur.secondary.filter((x) => x !== mu);
+  if (cur.primary.includes(mu)) return { primary, secondary: [...secondary, mu] };
+  if (cur.secondary.includes(mu)) return { primary, secondary };
+  return { primary: [...primary, mu], secondary };
+}
+
 export function ExerciseForm({ open, onClose, exercise, initialName = '', onSaved }: Props) {
   const [name, setName] = useState('');
   const [category, setCategory] = useState<ExerciseCategory>('squat');
   const [equipment, setEquipment] = useState<Equipment>('barbell');
   const [bar, setBar] = useState('20');
+  const [muscles, setMuscles] = useState<MuscleMap>({ primary: [], secondary: [] });
 
   useEffect(() => {
     if (!open) return;
@@ -29,6 +39,7 @@ export function ExerciseForm({ open, onClose, exercise, initialName = '', onSave
     setCategory(exercise?.category ?? 'squat');
     setEquipment(exercise?.equipment ?? 'barbell');
     setBar(String(exercise?.barWeight ?? 20));
+    setMuscles(exercise?.muscles ?? { primary: [], secondary: [] });
   }, [open, exercise, initialName]);
 
   const valid = name.trim().length > 0;
@@ -40,6 +51,7 @@ export function ExerciseForm({ open, onClose, exercise, initialName = '', onSave
       category,
       equipment,
       barWeight: equipment === 'barbell' ? (parseNum(bar) ?? 20) : undefined,
+      muscles: muscles.primary.length || muscles.secondary.length ? muscles : undefined,
     };
     let id: number;
     if (exercise) {
@@ -86,6 +98,33 @@ export function ExerciseForm({ open, onClose, exercise, initialName = '', onSave
                 {EQUIPMENT_LABELS[e]}
               </button>
             ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-medium text-muted">
+            Músculos · toca para cambiar: <b className="text-accent">principal</b> → <b className="text-fg">secundario</b> → ninguno
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {MUSCLES.map((mu) => {
+              const role = muscles.primary.includes(mu) ? 'primary' : muscles.secondary.includes(mu) ? 'secondary' : null;
+              return (
+                <button
+                  key={mu}
+                  onClick={() => setMuscles((cur) => cycleMuscle(cur, mu))}
+                  className={`h-10 rounded-full border px-3 text-sm font-semibold ${
+                    role === 'primary'
+                      ? 'border-accent bg-accent text-accent-fg'
+                      : role === 'secondary'
+                        ? 'border-accent text-fg'
+                        : 'border-line text-muted'
+                  }`}
+                  aria-label={`${MUSCLE_LABELS[mu]}: ${role === 'primary' ? 'principal' : role === 'secondary' ? 'secundario' : 'no trabaja'}`}
+                >
+                  {MUSCLE_LABELS[mu]}
+                </button>
+              );
+            })}
           </div>
         </div>
 

@@ -1,4 +1,5 @@
 import { db } from './schema';
+import { syncSeedExercises } from './seed';
 
 const TABLES = ['exercises', 'routines', 'workouts', 'sets', 'settings'] as const;
 type TableName = (typeof TABLES)[number];
@@ -52,5 +53,7 @@ export async function importBackup(backup: Backup): Promise<void> {
       await db.table(t).clear();
       await db.table(t).bulkAdd(backup.tables[t]);
     }
+    // Una copia antigua puede no traer los ejercicios ni los músculos nuevos.
+    await syncSeedExercises(db.exercises);
   });
 }
