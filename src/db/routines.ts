@@ -1,9 +1,10 @@
 import Dexie from 'dexie';
 import { db } from './schema';
 import type { Routine, RoutineDay, WorkoutSet } from './types';
-import { getActiveWorkout } from './workouts';
+import { getActiveWorkout, getPreviousSets } from './workouts';
 import { getSettings } from './settings';
-import { resolveTargetWeight } from '../domain/load';
+import { resolveTargetWeight, roundToIncrement } from '../domain/load';
+import { DELOAD_LOAD_FACTOR, deloadSets, isDeloadWeek, reducesLoad } from '../domain/deload';
 
 export const newId = () =>
   typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -59,7 +60,7 @@ export async function getReference1RM(exerciseId: number): Promise<Reference1RM 
  * Crea un entrenamiento activo a partir de un día de rutina, con las cargas
  * ya calculadas (%1RM → kg redondeado) y las reps planificadas.
  */
-export async function startWorkoutFromRoutine(routineId: number, dayId: string): Promise<number> {
+export async function startWorkoutFromRoutine(routineId: number, dayId: string, now = Date.now()): Promise<number> {
   const active = await getActiveWorkout();
   if (active) return active.id;
 
@@ -72,6 +73,11 @@ export async function startWorkoutFromRoutine(routineId: number, dayId: string):
   const refs = new Map(
     await Promise.all(exerciseIds.map(async (id) => [id, (await getReference1RM(id))?.value] as const)),
   );
+  const deload = isDeloadWeek(routine.deload, now) ? routine.deload!.style : undefined;
+  // Descarga con menos carga y series sin objetivo: −10 % del peso de la última sesión normal.
+  const prevByExercise = new Map<number, WorkoutSet[]>();
+  if (deload && reducesLoad(deload))
+    for (const id of exerciseIds) prevByExercise.set(id, await getPreviousSets(id));
 
   return db.transaction('rw', db.workouts, db.sets, async () => {
     const restByExercise: Record<number, number> = {};
@@ -81,7 +87,8 @@ export async function startWorkoutFromRoutine(routineId: number, dayId: string):
       routineId,
       routineDayId: dayId,
       name: `${routine.name} · ${day.name}`,
-      startedAt: Date.now(),
+      startedAt: now,
+      ...(deload && { deload: true }),
       status: 'active',
       exerciseOrder: exerciseIds,
       restByExercise,
@@ -90,16 +97,22 @@ export async function startWorkoutFromRoutine(routineId: number, dayId: string):
     const sets: Omit<WorkoutSet, 'id'>[] = [];
     const orderByExercise = new Map<number, number>();
     for (const pe of day.exercises) {
-      for (const ps of pe.sets) {
+      const planned = deload ? deloadSets(pe.sets, deload, loadIncrement) : pe.sets;
+      for (const ps of planned) {
         const order = orderByExercise.get(pe.exerciseId) ?? 0;
         orderByExercise.set(pe.exerciseId, order + 1);
+        let weight = resolveTargetWeight(ps.target, refs.get(pe.exerciseId), loadIncrement);
+        if (weight == null && deload && reducesLoad(deload) && ps.type !== 'warmup' && ps.target?.kind !== 'rpe') {
+          const prev = prevByExercise.get(pe.exerciseId)?.[order]?.weight;
+          if (prev) weight = roundToIncrement(prev * DELOAD_LOAD_FACTOR, loadIncrement);
+        }
         sets.push({
           workoutId,
           exerciseId: pe.exerciseId,
           order,
           type: ps.type,
           reps: ps.reps || undefined,
-          weight: resolveTargetWeight(ps.target, refs.get(pe.exerciseId), loadIncrement),
+          weight,
           target: ps.target,
         });
       }

@@ -21,6 +21,8 @@ interface Props {
   isFirst: boolean;
   isLast: boolean;
   restSec?: number;
+  /** Sesión de descarga: no se sugiere subir carga. */
+  deload?: boolean;
 }
 
 type Sheet =
@@ -30,7 +32,7 @@ type Sheet =
   | { kind: 'plates' }
   | null;
 
-export function ExerciseCard({ workoutId, exercise, sets, isFirst, isLast, restSec }: Props) {
+export function ExerciseCard({ workoutId, exercise, sets, isFirst, isLast, restSec, deload }: Props) {
   const prevSets = useLiveQuery(() => getPreviousSets(exercise.id, workoutId), [exercise.id, workoutId]) ?? [];
   const [sheet, setSheet] = useState<Sheet>(null);
   const isBarbell = exercise.equipment === 'barbell';
@@ -59,7 +61,7 @@ export function ExerciseCard({ workoutId, exercise, sets, isFirst, isLast, restS
   const alreadyApplied =
     !!suggestion &&
     mainPending.every((s) => (bodyweight ? s.reps === suggestion.reps : s.weight === suggestion.weight && s.reps === suggestion.reps));
-  const showSuggestion = !!suggestion && mainPending.length > 0;
+  const showSuggestion = !deload && !!suggestion && mainPending.length > 0;
   const applySuggestion = () => {
     if (!suggestion) return;
     for (const s of mainPending) void updateSet(s.id, bodyweight ? { reps: suggestion.reps } : { weight: suggestion.weight, reps: suggestion.reps });

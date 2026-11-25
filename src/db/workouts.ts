@@ -26,11 +26,13 @@ export async function getPreviousSets(
   exerciseId: number,
   excludeWorkoutId?: number,
 ): Promise<WorkoutSet[]> {
+  // Las sesiones de descarga no sirven de referencia (pesos y series reducidos a propósito).
+  const deloadIds = new Set(await db.workouts.filter((w) => !!w.deload).primaryKeys());
   const latest = await db.sets
     .where('[exerciseId+completedAt]')
     .between([exerciseId, Dexie.minKey], [exerciseId, Dexie.maxKey])
     .reverse()
-    .filter((s) => s.workoutId !== excludeWorkoutId)
+    .filter((s) => s.workoutId !== excludeWorkoutId && !deloadIds.has(s.workoutId))
     .first();
   if (!latest) return [];
   const sets = await db.sets.where('workoutId').equals(latest.workoutId).toArray();

@@ -12,6 +12,8 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { ExercisePicker } from '../exercises/ExercisePicker';
 import { PlannedExerciseCard } from './PlannedExerciseCard';
 import { MuscleSummary } from './MuscleSummary';
+import { DeloadCard } from './DeloadCard';
+import { isDeloadWeek } from '../../domain/deload';
 
 export function RoutineEditorPage() {
   const id = Number(useParams().id);
@@ -161,10 +163,13 @@ export function RoutineEditorPage() {
         className="btn btn-primary h-14 w-full text-lg"
       >
         <Play size={22} /> Empezar {day.name}
+        {isDeloadWeek(routine.deload) && <span className="font-semibold"> · descarga</span>}
       </button>
       {active && (
         <p className="text-center text-sm text-muted">Termina el entrenamiento en curso para empezar otro.</p>
       )}
+
+      <DeloadCard routine={routine} update={update} />
 
       <MuscleSummary routine={routine} dayIdx={idx} exercises={byId} />
 

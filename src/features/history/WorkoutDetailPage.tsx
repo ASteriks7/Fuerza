@@ -80,6 +80,9 @@ export function WorkoutDetailPage() {
           {fmtTime(workout.startedAt)}
           {workout.name ? ` · ${workout.name}` : ''}
         </p>
+        {workout.deload && (
+          <span className="mt-1 inline-block rounded-full bg-sky-400/15 px-2 py-0.5 text-xs font-bold text-sky-300">Semana de descarga</span>
+        )}
       </div>
 
       <section className="card p-4">

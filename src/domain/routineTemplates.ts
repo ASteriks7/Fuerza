@@ -8,6 +8,8 @@ export interface RoutineTemplate {
   tag: 'Fuerza' | 'Powerlifting' | 'Halterofilia' | 'Potencia';
   description: string;
   text: string;
+  /** Semana de descarga cada N semanas al importarla (se puede cambiar en la rutina). */
+  deloadEvery: number;
 }
 
 export const ROUTINE_TEMPLATES: RoutineTemplate[] = [
@@ -15,6 +17,7 @@ export const ROUTINE_TEMPLATES: RoutineTemplate[] = [
     id: 'fuerza-3',
     name: 'Fuerza básica · 3 días',
     tag: 'Fuerza',
+    deloadEvery: 4,
     description: 'Cuerpo completo con sentadilla, banca y peso muerto por %. Ideal para empezar.',
     text: `Fuerza básica · 3 días
 Día A
@@ -37,6 +40,7 @@ Face pull: 3x15`,
     id: 'pl-4-rpe',
     name: 'Powerlifting · 4 días (RPE)',
     tag: 'Powerlifting',
+    deloadEvery: 4,
     description: 'Top set + back-offs por RPE en los básicos y variantes para puntos débiles.',
     text: `Powerlifting · 4 días (RPE)
 Día 1 · Sentadilla y banca
@@ -63,6 +67,7 @@ Rueda abdominal: 3x10`,
     id: 'oly-inicio-3',
     name: 'Halterofilia · iniciación 3 días',
     tag: 'Halterofilia',
+    deloadEvery: 4,
     description: 'Técnica con variantes de potencia y colgantes, tirones y sentadilla frontal.',
     text: `Halterofilia · iniciación 3 días
 Día 1
@@ -85,6 +90,7 @@ Salto al cajón: 3x5`,
     id: 'oly-inter-4',
     name: 'Halterofilia · intermedio 4 días',
     tag: 'Halterofilia',
+    deloadEvery: 4,
     description: 'Arrancada y dos tiempos con series pesadas, tirones al 90–100 % y sentadillas.',
     text: `Halterofilia · intermedio 4 días
 Día 1 · Arrancada
@@ -111,6 +117,7 @@ Tirón de cargada: 3x3 @100%`,
     id: 'potencia-2',
     name: 'Potencia y pliometría · 2 días',
     tag: 'Potencia',
+    deloadEvery: 4,
     description: 'Saltos, lanzamientos y levantamientos explosivos para mejorar la potencia.',
     text: `Potencia y pliometría · 2 días
 Día 1

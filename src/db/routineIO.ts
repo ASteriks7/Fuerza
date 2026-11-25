@@ -4,6 +4,7 @@ import type { Exercise, Routine, RoutineDay } from './types';
 import { guessDefinition, normalizeName, toRoutineFile, type RoutineDraft } from '../domain/routineImport';
 import { shareFile, shareText, slug } from '../lib/share';
 import { routineToCsv, routineToText, type ExportLang } from '../domain/routineExport';
+import { newDeloadConfig } from '../domain/deload';
 
 /**
  * Guarda un borrador revisado como rutina nueva. Los ejercicios que no existen se
@@ -30,7 +31,12 @@ export async function saveDraft(draft: RoutineDraft): Promise<number> {
       }
       days.push({ id: newId(), name: d.name, exercises });
     }
-    return db.routines.add({ name: draft.name.trim() || 'Rutina importada', updatedAt: Date.now(), days });
+    return db.routines.add({
+      name: draft.name.trim() || 'Rutina importada',
+      updatedAt: Date.now(),
+      days,
+      ...(draft.deloadEvery && { deload: newDeloadConfig(draft.deloadEvery) }),
+    } as Routine);
   });
 }
 

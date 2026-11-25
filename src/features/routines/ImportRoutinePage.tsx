@@ -144,7 +144,7 @@ export function ImportRoutinePage() {
         ROUTINE_TEMPLATES.map((t) => (
           <button
             key={t.id}
-            onClick={() => accept(parseRoutineText(t.text, exercises))}
+            onClick={() => accept({ ...parseRoutineText(t.text, exercises), deloadEvery: t.deloadEvery })}
             className="card flex flex-col gap-1 p-4 text-left active:bg-surface-2"
           >
             <span className="flex items-center justify-between gap-2">
@@ -152,6 +152,7 @@ export function ImportRoutinePage() {
               <span className="shrink-0 rounded-full bg-surface-2 px-2.5 py-0.5 text-xs font-semibold text-accent">{t.tag}</span>
             </span>
             <span className="text-sm text-muted">{t.description}</span>
+            <span className="text-xs text-sky-300">Incluye semana de descarga cada {t.deloadEvery} semanas.</span>
           </button>
         ))}
 

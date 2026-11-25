@@ -86,11 +86,25 @@ export interface RoutineDay {
 }
 
 /** Rutinas: la UI llega en la Fase 2, el esquema existe desde ya. */
+export type DeloadStyle = 'volume' | 'intensity' | 'both';
+
+/** Semanas de descarga de una rutina. */
+export interface DeloadConfig {
+  /** Ciclo en semanas (la última es de descarga); null = sin ciclo automático. */
+  everyWeeks: number | null;
+  style: DeloadStyle;
+  /** Lunes (00:00 local) de la semana 1 del ciclo. */
+  anchor: number;
+  /** Ajuste manual de una semana concreta (lunes): forzar o saltar la descarga. */
+  override?: { week: number; deload: boolean };
+}
+
 export interface Routine {
   id: number;
   name: string;
   updatedAt: number;
   days: RoutineDay[];
+  deload?: DeloadConfig;
 }
 
 export type WorkoutStatus = 'active' | 'done';
@@ -108,6 +122,8 @@ export interface Workout {
   /** Descanso por ejercicio definido en la rutina (s). */
   restByExercise?: Record<number, number>;
   notes?: string;
+  /** Entrenamiento de semana de descarga (no cuenta para la progresión de cargas). */
+  deload?: boolean;
 }
 
 export interface WorkoutSet {

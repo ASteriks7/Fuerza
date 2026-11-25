@@ -38,6 +38,8 @@ export interface RoutineDraft {
   name: string;
   days: DraftDay[];
   warnings: string[];
+  /** Ciclo de descarga con el que se guarda (las plantillas traen uno). */
+  deloadEvery?: number;
 }
 
 /* ------------------------------------------------------------------ */

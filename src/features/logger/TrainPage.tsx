@@ -10,6 +10,7 @@ import { saveSetting, useSettings } from '../../db/settings';
 import { notificationsDenied, notificationsSupported, requestNotifyPermission, unlockAudio } from '../../lib/alerts';
 import { useNow } from '../../hooks/useNow';
 import { fmtDuration } from '../../lib/format';
+import { isDeloadWeek } from '../../domain/deload';
 
 export function TrainPage() {
   const navigate = useNavigate();
@@ -75,8 +76,11 @@ export function TrainPage() {
 
         {routines?.map((r) => (
           <div key={r.id} className="card p-3">
-            <Link to={`/routines/${r.id}`} className="mb-2 block truncate px-1 font-bold">
-              {r.name}
+            <Link to={`/routines/${r.id}`} className="mb-2 flex items-center gap-2 px-1 font-bold">
+              <span className="truncate">{r.name}</span>
+              {isDeloadWeek(r.deload) && (
+                <span className="shrink-0 rounded-full bg-sky-400/15 px-2 py-0.5 text-xs font-bold text-sky-300">Semana de descarga</span>
+              )}
             </Link>
             <div className="grid grid-cols-2 gap-2">
               {r.days.map((d) => (

@@ -75,6 +75,7 @@ export function WorkoutPage() {
       <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-line bg-bg/95 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur">
         <div className="min-w-0">
           <h1 className="truncate text-lg font-bold">{workout.name ?? 'Entrenamiento'}</h1>
+          {workout.deload && <p className="text-xs font-bold text-sky-300">Semana de descarga · entrena suave</p>}
           <p className="text-sm text-muted tabular-nums">
             <span className="font-semibold text-accent">{fmtDuration(now - workout.startedAt)}</span> · {completed}{' '}
             {completed === 1 ? 'serie' : 'series'}
@@ -103,6 +104,7 @@ export function WorkoutPage() {
               isFirst={i === 0}
               isLast={i === workout.exerciseOrder.length - 1}
               restSec={workout.restByExercise?.[exId]}
+              deload={!!workout.deload}
             />
           );
         })}
