@@ -128,6 +128,15 @@ export interface WorkoutSet {
   target?: LoadTarget;
 }
 
+/** Meta del usuario: e1RM o peso real de un ejercicio, o total SBD (mejores pesos). */
+export interface Goal {
+  id: number;
+  kind: 'e1rm' | 'weight' | 'total';
+  exerciseId?: number;
+  target: number;
+  createdAt: number;
+}
+
 export interface SettingRow {
   key: string;
   value: unknown;

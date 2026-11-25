@@ -9,7 +9,9 @@ import { useSettings } from '../../db/settings';
 import { useRestTimer } from '../../stores/restTimer';
 import { useWakeLock } from '../../hooks/useWakeLock';
 import { useNow } from '../../hooks/useNow';
-import { fmtDuration } from '../../lib/format';
+import { fmtDuration, fmtNum } from '../../lib/format';
+import { tonnage } from '../../domain/volume';
+import { PrToast } from './PrToast';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { ExercisePicker } from '../exercises/ExercisePicker';
 import { ExerciseCard } from './ExerciseCard';
@@ -52,12 +54,13 @@ export function WorkoutPage() {
   const byId = new Map(exercises.map((e) => [e.id, e]));
   const completed = sets.filter((s) => s.completedAt != null).length;
   const pending = sets.length - completed;
+  const volume = Math.round(tonnage(sets));
 
   const finish = async () => {
     leaving.current = true;
     await finishWorkout(workout.id);
     useRestTimer.getState().skip();
-    navigate(`/history/${workout.id}`, { replace: true });
+    navigate(`/history/${workout.id}?fin=1`, { replace: true });
   };
   const discard = async () => {
     leaving.current = true;
@@ -68,12 +71,14 @@ export function WorkoutPage() {
 
   return (
     <div>
+      <PrToast />
       <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-line bg-bg/95 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur">
         <div className="min-w-0">
           <h1 className="truncate text-lg font-bold">{workout.name ?? 'Entrenamiento'}</h1>
           <p className="text-sm text-muted tabular-nums">
             <span className="font-semibold text-accent">{fmtDuration(now - workout.startedAt)}</span> · {completed}{' '}
             {completed === 1 ? 'serie' : 'series'}
+            {volume > 0 && <> · {fmtNum(volume)} kg</>}
           </p>
         </div>
         <button onClick={() => setConfirm(completed === 0 ? 'empty' : 'finish')} className="btn btn-primary h-11">

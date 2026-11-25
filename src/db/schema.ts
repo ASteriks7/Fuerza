@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { Exercise, Routine, SettingRow, Workout, WorkoutSet } from './types';
+import type { Exercise, Goal, Routine, SettingRow, Workout, WorkoutSet } from './types';
 import { SEED_EXERCISES, syncSeedExercises } from './seed';
 
 export class FuerzaDB extends Dexie {
@@ -8,6 +8,7 @@ export class FuerzaDB extends Dexie {
   workouts!: EntityTable<Workout, 'id'>;
   sets!: EntityTable<WorkoutSet, 'id'>;
   settings!: EntityTable<SettingRow, 'key'>;
+  goals!: EntityTable<Goal, 'id'>;
 
   constructor(name = 'fuerza') {
     super(name);
@@ -26,6 +27,9 @@ export class FuerzaDB extends Dexie {
     this.version(2)
       .stores({})
       .upgrade((tx) => syncSeedExercises(tx.table('exercises')));
+
+    // v3: metas del usuario.
+    this.version(3).stores({ goals: '++id, exerciseId' });
 
     this.on('populate', (tx) => {
       tx.table('exercises').bulkAdd(SEED_EXERCISES);

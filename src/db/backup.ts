@@ -2,7 +2,9 @@ import { db } from './schema';
 import { syncSeedExercises } from './seed';
 import { shareFile } from '../lib/share';
 
-const TABLES = ['exercises', 'routines', 'workouts', 'sets', 'settings'] as const;
+const TABLES = ['exercises', 'routines', 'workouts', 'sets', 'settings', 'goals'] as const;
+/** Tablas que una copia antigua puede no traer (se importan vacías). */
+const OPTIONAL: readonly TableName[] = ['goals'];
 type TableName = (typeof TABLES)[number];
 
 export interface Backup {
@@ -37,6 +39,7 @@ export function parseBackup(text: string): Backup {
     throw new Error('El archivo no es un respaldo de Fuerza.');
   }
   for (const t of TABLES) {
+    if (OPTIONAL.includes(t) && b.tables[t] == null) b.tables[t] = [];
     if (!Array.isArray(b.tables[t])) throw new Error(`Falta la tabla "${t}" en el respaldo.`);
   }
   return b as Backup;

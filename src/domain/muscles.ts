@@ -1,4 +1,5 @@
-import type { Exercise, Muscle, PlannedExercise } from '../db/types';
+import type { Exercise, Muscle, PlannedExercise, WorkoutSet } from '../db/types';
+import { startOfWeek } from './analytics';
 
 export interface MuscleVolume {
   muscle: Muscle;
@@ -29,4 +30,41 @@ export function muscleVolume(planned: PlannedExercise[], exercises: Map<number, 
     for (const mu of muscles.secondary) add(mu, n / 2, pe.exerciseId);
   }
   return [...acc.values()].sort((a, b) => b.sets - a.sets);
+}
+
+/**
+ * Series efectivas por músculo de series realmente hechas (completadas, sin calentamientos).
+ * Misma convención: principal = 1, secundario = 0,5.
+ */
+export function muscleSetsFromWorkoutSets(sets: WorkoutSet[], exercises: Map<number, Exercise>): Map<Muscle, number> {
+  const out = new Map<Muscle, number>();
+  for (const s of sets) {
+    if (s.completedAt == null || s.type === 'warmup') continue;
+    const m = exercises.get(s.exerciseId)?.muscles;
+    if (!m) continue;
+    for (const mu of m.primary) out.set(mu, (out.get(mu) ?? 0) + 1);
+    for (const mu of m.secondary) out.set(mu, (out.get(mu) ?? 0) + 0.5);
+  }
+  return out;
+}
+
+/** Series por músculo de cada una de las últimas `weeks` semanas (lunes a domingo), de la más antigua a la actual. */
+export function weeklyMuscleSets(
+  sets: WorkoutSet[],
+  exercises: Map<number, Exercise>,
+  weeks: number,
+  now = Date.now(),
+): { weekStart: number; sets: Map<Muscle, number> }[] {
+  const current = startOfWeek(now);
+  const starts = Array.from({ length: weeks }, (_, i) => {
+    const d = new Date(current);
+    d.setDate(d.getDate() - (weeks - 1 - i) * 7);
+    return d.getTime();
+  });
+  const buckets = new Map<number, WorkoutSet[]>(starts.map((w) => [w, []]));
+  for (const s of sets) {
+    if (s.completedAt == null) continue;
+    buckets.get(startOfWeek(s.completedAt))?.push(s);
+  }
+  return starts.map((w) => ({ weekStart: w, sets: muscleSetsFromWorkoutSets(buckets.get(w)!, exercises) }));
 }

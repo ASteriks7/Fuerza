@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check } from 'lucide-react';
 import type { Exercise, WorkoutSet } from '../../db/types';
-import { completeSet, uncompleteSet, updateSet } from '../../db/workouts';
+import { completeSet, prsForSet, uncompleteSet, updateSet } from '../../db/workouts';
+import { usePrToast } from './PrToast';
 import { useSettings } from '../../db/settings';
 import { useRestTimer } from '../../stores/restTimer';
 import { estimate1RM, roundE1RM } from '../../domain/e1rm';
@@ -75,6 +76,11 @@ export function SetRow({ set, label, prev, exercise, restSec, onOpenType, onOpen
     }
     (document.activeElement as HTMLElement | null)?.blur?.();
     if (settings.restVibrate) vibrate(30);
+    void prsForSet(set.id).then((hits) => {
+      if (!hits.length) return;
+      usePrToast.getState().show(exercise.name, hits);
+      if (settings.restVibrate) vibrate([60, 60, 120]);
+    });
     startRest(set.type === 'warmup' ? settings.restWarmupSec : (restSec ?? settings.restWorkingSec));
   };
 

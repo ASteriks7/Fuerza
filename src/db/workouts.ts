@@ -2,6 +2,7 @@ import Dexie from 'dexie';
 import { db } from './schema';
 import type { Exercise, SetType, Workout, WorkoutSet } from './types';
 import { estimate1RM } from '../domain/e1rm';
+import { detectPRs, type PrHit } from '../domain/records';
 
 export async function getActiveWorkout(): Promise<Workout | undefined> {
   return db.workouts.where('status').equals('active').first();
@@ -105,6 +106,17 @@ export async function completeSet(
     e1rm: estimate1RM(weight, reps, rpe),
   });
   return true;
+}
+
+/** Récords que consigue una serie ya completada frente a todo lo anterior de ese ejercicio. */
+export async function prsForSet(setId: number): Promise<PrHit[]> {
+  const set = await db.sets.get(setId);
+  if (!set?.completedAt) return [];
+  const prior = await db.sets
+    .where('[exerciseId+completedAt]')
+    .between([set.exerciseId, Dexie.minKey], [set.exerciseId, set.completedAt], true, false)
+    .toArray();
+  return detectPRs(set, prior);
 }
 
 export async function uncompleteSet(id: number): Promise<void> {

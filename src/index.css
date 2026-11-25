@@ -88,3 +88,8 @@
 .animate-shake {
   animation: shake 200ms ease-in-out 2;
 }
+
+@keyframes prIn {
+  from { transform: translateY(-120%); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}

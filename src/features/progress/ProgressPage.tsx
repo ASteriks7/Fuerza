@@ -19,6 +19,16 @@ import {
 import { roundE1RM } from '../../domain/e1rm';
 import { fmtNum } from '../../lib/format';
 import { ExercisePicker } from '../exercises/ExercisePicker';
+import { MuscleProgressCard, VolumeTotalsCard } from './VolumeTab';
+import { AchievementsCard, GoalsCard } from './GoalsTab';
+
+type Tab = 'fuerza' | 'volumen' | 'logros';
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'fuerza', label: 'Fuerza' },
+  { id: 'volumen', label: 'Volumen' },
+  { id: 'logros', label: 'Metas y logros' },
+];
+const TAB_KEY = 'fuerza.progressTab';
 
 // Colores de las gráficas (los atributos SVG no admiten var(--…)). Mismos valores que @theme.
 const C = { accent: '#c6f432', line: '#2e2e36', muted: '#9b9ba6', surface: '#16161a' };
@@ -37,6 +47,22 @@ export function ProgressPage() {
   const sets = useLiveQuery(() => db.sets.where('completedAt').above(0).toArray(), []);
   const exercises = useLiveQuery(() => db.exercises.toArray(), []);
   const workouts = useLiveQuery(() => db.workouts.where('status').equals('done').toArray(), []);
+  const [tab, setTabState] = useState<Tab>(() => {
+    try {
+      const t = localStorage.getItem(TAB_KEY);
+      return TABS.some((x) => x.id === t) ? (t as Tab) : 'fuerza';
+    } catch {
+      return 'fuerza';
+    }
+  });
+  const setTab = (t: Tab) => {
+    setTabState(t);
+    try {
+      localStorage.setItem(TAB_KEY, t);
+    } catch {
+      /* sin almacenamiento */
+    }
+  };
 
   const byExercise = useMemo(() => {
     const m = new Map<number, WorkoutSet[]>();
@@ -59,18 +85,41 @@ export function ProgressPage() {
   return (
     <div className="flex flex-col gap-4 px-4 pt-[max(1.5rem,env(safe-area-inset-top))]">
       <h1 className="text-3xl font-black">Progreso</h1>
-      {sets.length === 0 ? (
+      <div className="grid grid-cols-3 gap-1 rounded-xl bg-surface p-1" role="tablist">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => setTab(t.id)}
+            className={`h-10 rounded-lg text-sm font-bold ${tab === t.id ? 'bg-surface-2 text-accent' : 'text-muted'}`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {tab === 'logros' ? (
+        <>
+          <GoalsCard sets={sets} exercises={exercises} />
+          <AchievementsCard sets={sets} exercises={exercises} workouts={workouts} />
+        </>
+      ) : sets.length === 0 ? (
         <p className="py-10 text-center text-muted">
           Completa algunas series y aquí verás tu total, récords y gráficas.
         </p>
-      ) : (
+      ) : tab === 'fuerza' ? (
         <>
           <SbdTotal sbd={sbd} byExercise={byExercise} />
           <ExerciseProgress sbd={sbd} exercises={exercises} byExercise={byExercise} />
+        </>
+      ) : (
+        <>
+          <VolumeTotalsCard sets={sets} />
           <TonnageCard sets={sets} />
+          <MuscleProgressCard sets={sets} exercises={exercises} />
         </>
       )}
-      <TrainingCalendar workouts={workouts} />
+      {tab === 'fuerza' && <TrainingCalendar workouts={workouts} />}
     </div>
   );
 }

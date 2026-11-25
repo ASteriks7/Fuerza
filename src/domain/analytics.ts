@@ -112,3 +112,31 @@ export function monthGrid(year: number, month: number): (number | null)[] {
   while (cells.length % 7) cells.push(null);
   return cells;
 }
+
+export interface VolumeTotals {
+  week: number;
+  month: number;
+  year: number;
+  all: number;
+  reps: number;
+}
+
+/** Tonelaje acumulado (kg) de esta semana, este mes, este año y de siempre. */
+export function volumeTotals(sets: WorkoutSet[], now = Date.now()): VolumeTotals {
+  const d = new Date(now);
+  const week = startOfWeek(now);
+  const month = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+  const year = new Date(d.getFullYear(), 0, 1).getTime();
+  const t: VolumeTotals = { week: 0, month: 0, year: 0, all: 0, reps: 0 };
+  for (const s of sets) {
+    if (!isWorkSet(s)) continue;
+    const v = (s.weight ?? 0) * s.reps!;
+    const at = s.completedAt!;
+    t.all += v;
+    t.reps += s.reps!;
+    if (at >= year) t.year += v;
+    if (at >= month) t.month += v;
+    if (at >= week) t.week += v;
+  }
+  return t;
+}
