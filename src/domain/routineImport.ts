@@ -1,4 +1,5 @@
 import type { Equipment, Exercise, ExerciseCategory, LoadTarget, MuscleMap, PlannedSet, Routine, SetType } from '../db/types';
+import { englishName, EXERCISE_NAMES_EN } from './exerciseNamesEn';
 
 // Importación de rutinas: texto libre, tablas (CSV / Excel / celdas pegadas) y
 // archivos de Fuerza. Todo produce un borrador (RoutineDraft) que el usuario
@@ -6,6 +7,8 @@ import type { Equipment, Exercise, ExerciseCategory, LoadTarget, MuscleMap, Plan
 
 export interface ExerciseDefinition {
   name: string;
+  /** Nombre en inglés (solo informativo, para quien no habla español). */
+  nameEn?: string;
   category: ExerciseCategory;
   equipment: Equipment;
   barWeight?: number;
@@ -149,6 +152,11 @@ const ALIASES = new Map<string, string>();
 for (const [target, list] of Object.entries(ALIAS_SOURCE)) {
   for (const a of list) ALIASES.set(normalizeName(a), normalizeName(target));
 }
+// Nombres en inglés del catálogo (los que usa la exportación en inglés).
+for (const [es, en] of Object.entries(EXERCISE_NAMES_EN)) {
+  const k = normalizeName(en);
+  if (k !== normalizeName(es) && !ALIASES.has(k)) ALIASES.set(k, normalizeName(es));
+}
 
 const STOP = new Set(['con', 'de', 'del', 'la', 'el', 'a', 'al', 'en', 'y', 'the', 'with', 'of']);
 const tokens = (n: string) => n.split(' ').filter((t) => t && !STOP.has(t));
@@ -262,7 +270,10 @@ function expandSets(count: number, reps: number, target: LoadTarget | undefined,
 }
 
 /** Analiza una línea “Ejercicio 5x3 @80%, 2x5 @75% descanso 3 min”. undefined si no hay esquema de series. */
-export function parseExerciseLine(line: string): Omit<DraftExercise, 'exerciseId' | 'fuzzy'> | undefined {
+export function parseExerciseLine(full: string): Omit<DraftExercise, 'exerciseId' | 'fuzzy'> | undefined {
+  // "… // nota": lo que va tras // es una nota (así se exportan).
+  const [line, ...noteParts] = full.split(/\s+\/\/\s*/);
+  const notes = noteParts.join(' // ').trim() || undefined;
   const matches = [...line.matchAll(SCHEME)];
   if (!matches.length) return undefined;
 
@@ -287,7 +298,7 @@ export function parseExerciseLine(line: string): Omit<DraftExercise, 'exerciseId
     const target = parseLoad(segment) ?? (i === 0 ? leadingLoad : undefined);
     sets.push(...expandSets(Number(m[1]), Number(m[2]), target, parseSetType(segment)));
   });
-  return { rawName: name, sets, restSec };
+  return { rawName: name, sets, restSec, notes };
 }
 
 /** Convierte texto pegado (WhatsApp, PDF, web, celdas de Excel…) en un borrador de rutina. */
@@ -307,7 +318,8 @@ export function parseRoutineText(text: string, exercises: Exercise[], fallbackNa
 
   for (const original of lines) {
     const line = cleanLine(original);
-    if (!line) continue;
+    // Vacía o la leyenda que añade la exportación ("@8 = RPE 8 · 75% = % del 1RM").
+    if (!line || /^@s*d+(?:[.,]d+)?s*=/.test(line)) continue;
     const parsed = parseExerciseLine(line);
     if (parsed && parsed.rawName) {
       day().exercises.push(resolve(parsed, exercises));
@@ -538,7 +550,8 @@ export function toRoutineFile(routine: Routine, exercises: Map<number, Exercise>
           const e = exercises.get(pe.exerciseId);
           if (!e) return [];
           const { name, category, equipment, barWeight, muscles } = e;
-          return [{ exercise: { name, category, equipment, barWeight, muscles }, restSec: pe.restSec, notes: pe.notes, sets: pe.sets }];
+          const nameEn = englishName(name);
+          return [{ exercise: { name, ...(nameEn !== name && { nameEn }), category, equipment, barWeight, muscles }, restSec: pe.restSec, notes: pe.notes, sets: pe.sets }];
         }),
       })),
     },
@@ -559,7 +572,7 @@ export function draftFromRoutineFile(file: RoutineFile, exercises: Exercise[]): 
         name: d.name,
         exercises: d.exercises.map((x) => {
           // Mismo nombre (o alias) → mismo ejercicio. Si no existe, se crea con su definición.
-          const m = matchExercise(x.exercise.name, exercises);
+          const m = matchExercise(x.exercise.name, exercises) ?? (x.exercise.nameEn ? matchExercise(x.exercise.nameEn, exercises) : undefined);
           return {
             rawName: x.exercise.name,
             exerciseId: m && !m.fuzzy ? m.id : undefined,

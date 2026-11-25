@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ChevronLeft, Copy, Download, MoreVertical, Pencil, Plus, Share2, Trash2 } from 'lucide-react';
+import { ChevronLeft, Copy, Download, FileJson, FileSpreadsheet, MessageSquareText, MoreVertical, Pencil, Plus, Share2, Trash2 } from 'lucide-react';
 import { db } from '../../db/schema';
 import type { Routine } from '../../db/types';
 import { createRoutine, deleteRoutine, duplicateRoutine } from '../../db/routines';
-import { shareRoutine } from '../../db/routineIO';
+import { shareRoutine, type ShareFormat } from '../../db/routineIO';
+import type { ExportLang } from '../../domain/routineExport';
 import { BottomSheet } from '../../components/ui/BottomSheet';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 
@@ -14,6 +15,7 @@ export function RoutinesPage() {
   const routines = useLiveQuery(() => db.routines.orderBy('updatedAt').reverse().toArray(), []);
   const [menu, setMenu] = useState<Routine | null>(null);
   const [toDelete, setToDelete] = useState<Routine | null>(null);
+  const [sharing, setSharing] = useState<Routine | null>(null);
 
   const create = async () => navigate(`/routines/${await createRoutine()}`);
 
@@ -77,13 +79,12 @@ export function RoutinesPage() {
           </button>
           <button
             className="btn btn-ghost justify-start"
-            onClick={async () => {
-              const r = menu;
+            onClick={() => {
+              setSharing(menu);
               setMenu(null);
-              if (r) await shareRoutine(r);
             }}
           >
-            <Share2 size={20} /> Compartir (archivo)
+            <Share2 size={20} /> Compartir / exportar
           </button>
           <button
             className="btn btn-danger justify-start"
@@ -97,6 +98,8 @@ export function RoutinesPage() {
         </div>
       </BottomSheet>
 
+      <ShareSheet routine={sharing} onClose={() => setSharing(null)} />
+
       <ConfirmDialog
         open={toDelete !== null}
         onClose={() => setToDelete(null)}
@@ -107,5 +110,95 @@ export function RoutinesPage() {
         onConfirm={() => toDelete && void deleteRoutine(toDelete.id)}
       />
     </div>
+  );
+}
+
+const LANG_KEY = 'fuerza.exportLang';
+
+function ShareSheet({ routine, onClose }: { routine: Routine | null; onClose: () => void }) {
+  const [lang, setLangState] = useState<ExportLang>(() => {
+    try {
+      return localStorage.getItem(LANG_KEY) === 'en' ? 'en' : 'es';
+    } catch {
+      return 'es';
+    }
+  });
+  const [copied, setCopied] = useState(false);
+  const setLang = (l: ExportLang) => {
+    setLangState(l);
+    try {
+      localStorage.setItem(LANG_KEY, l);
+    } catch {
+      /* sin almacenamiento */
+    }
+  };
+  const share = async (format: ShareFormat) => {
+    if (!routine) return;
+    const res = await shareRoutine(routine, format, lang);
+    if (res === 'copied') {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+      return;
+    }
+    onClose();
+  };
+  const opts: { format: ShareFormat; icon: React.ReactNode; title: string; desc: string }[] = [
+    {
+      format: 'text',
+      icon: <MessageSquareText size={22} />,
+      title: lang === 'en' ? 'Texto en inglés' : 'Texto',
+      desc: 'Para WhatsApp, notas o email. Se lee tal cual.',
+    },
+    {
+      format: 'csv',
+      icon: <FileSpreadsheet size={22} />,
+      title: lang === 'en' ? 'Excel / CSV en inglés' : 'Excel / CSV',
+      desc: 'Tabla con una fila por grupo de series.',
+    },
+    {
+      format: 'fuerza',
+      icon: <FileJson size={22} />,
+      title: 'Archivo de Fuerza',
+      desc: 'Para importarla en la app. Lleva los nombres en español e inglés.',
+    },
+  ];
+  return (
+    <BottomSheet open={routine !== null} onClose={onClose} title="Compartir rutina">
+      <div className="flex flex-col gap-3 pb-2">
+        <div className="grid grid-cols-2 gap-1 rounded-xl bg-surface-2 p-1" role="radiogroup" aria-label="Idioma">
+          {(
+            [
+              ['es', 'Español'],
+              ['en', 'English'],
+            ] as const
+          ).map(([l, label]) => (
+            <button
+              key={l}
+              role="radio"
+              aria-checked={lang === l}
+              onClick={() => setLang(l)}
+              className={`h-10 rounded-lg text-sm font-bold ${lang === l ? 'bg-accent text-accent-fg' : 'text-muted'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {lang === 'en' && (
+          <p className="-mt-1 text-xs text-muted">
+            Los ejercicios del catálogo se traducen (Sentadilla → Back squat). Los que creaste tú van con su nombre.
+          </p>
+        )}
+        {opts.map((o) => (
+          <button key={o.format} onClick={() => void share(o.format)} className="btn h-auto justify-start gap-3 bg-surface-2 py-3 text-left">
+            <span className="shrink-0 text-accent">{o.icon}</span>
+            <span>
+              <span className="block font-bold">{o.title}</span>
+              <span className="block text-xs font-normal text-muted">{o.desc}</span>
+            </span>
+          </button>
+        ))}
+        {copied && <p className="text-center text-sm font-semibold text-accent">Copiado al portapapeles</p>}
+      </div>
+    </BottomSheet>
   );
 }

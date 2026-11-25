@@ -2,7 +2,8 @@ import { db } from './schema';
 import { newId } from './routines';
 import type { Exercise, Routine, RoutineDay } from './types';
 import { guessDefinition, normalizeName, toRoutineFile, type RoutineDraft } from '../domain/routineImport';
-import { shareFile, slug } from '../lib/share';
+import { shareFile, shareText, slug } from '../lib/share';
+import { routineToCsv, routineToText, type ExportLang } from '../domain/routineExport';
 
 /**
  * Guarda un borrador revisado como rutina nueva. Los ejercicios que no existen se
@@ -17,7 +18,7 @@ export async function saveDraft(draft: RoutineDraft): Promise<number> {
       for (const de of d.exercises) {
         let id = de.exerciseId;
         if (id == null) {
-          const def = de.definition ?? guessDefinition(de.rawName);
+          const { nameEn: _en, ...def } = de.definition ?? guessDefinition(de.rawName);
           const key = normalizeName(def.name);
           id = created.get(key);
           if (id == null) {
@@ -33,9 +34,21 @@ export async function saveDraft(draft: RoutineDraft): Promise<number> {
   });
 }
 
-/** Exporta una rutina como archivo .json de Fuerza y abre el menú de compartir. */
-export async function shareRoutine(routine: Routine): Promise<void> {
-  const exercises = await db.exercises.toArray();
-  const file = toRoutineFile(routine, new Map<number, Exercise>(exercises.map((e) => [e.id, e])));
-  await shareFile(`${slug(routine.name)}.fuerza.json`, JSON.stringify(file, null, 1), 'application/json', routine.name);
+export type ShareFormat = 'fuerza' | 'text' | 'csv';
+
+/**
+ * Comparte una rutina:
+ * - fuerza: archivo .json para importarlo en otra app Fuerza (lleva el nombre en español e inglés).
+ * - text: mensaje legible (WhatsApp, notas), en español o inglés.
+ * - csv: tabla para Excel / Google Sheets, en español o inglés.
+ */
+export async function shareRoutine(routine: Routine, format: ShareFormat = 'fuerza', lang: ExportLang = 'es') {
+  const list = await db.exercises.toArray();
+  const exercises = new Map<number, Exercise>(list.map((e) => [e.id, e]));
+  const base = slug(routine.name) + (lang === 'en' ? '-en' : '');
+  if (format === 'text') return shareText(routineToText(routine, exercises, lang), routine.name);
+  if (format === 'csv')
+    return shareFile(`${base}.csv`, '﻿' + routineToCsv(routine, exercises, lang), 'text/csv', routine.name);
+  const file = toRoutineFile(routine, exercises);
+  return shareFile(`${slug(routine.name)}.fuerza.json`, JSON.stringify(file, null, 1), 'application/json', routine.name);
 }

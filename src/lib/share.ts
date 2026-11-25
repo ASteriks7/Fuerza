@@ -35,6 +35,29 @@ export async function shareFile(filename: string, text: string, mime = 'applicat
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/** Comparte texto como mensaje (WhatsApp, notas…). Sin menú de compartir: lo copia al portapapeles. */
+export async function shareText(text: string, title?: string): Promise<'shared' | 'copied' | 'cancelled'> {
+  if (isNativeApp) {
+    const { Share } = await import('@capacitor/share');
+    try {
+      await Share.share({ title, text });
+      return 'shared';
+    } catch {
+      return 'cancelled';
+    }
+  }
+  if (navigator.share) {
+    try {
+      await navigator.share({ text, title });
+      return 'shared';
+    } catch (e) {
+      if ((e as DOMException).name === 'AbortError') return 'cancelled';
+    }
+  }
+  await navigator.clipboard.writeText(text);
+  return 'copied';
+}
+
 /** “Halterofilia · 4 días” → “halterofilia-4-dias” */
 export function slug(s: string): string {
   return (

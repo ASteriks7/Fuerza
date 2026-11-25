@@ -141,7 +141,7 @@ export function SettingsPage() {
         {msg && <p className={`text-sm ${msg.error ? 'text-danger' : 'text-ok'}`}>{msg.text}</p>}
       </section>
 
-      <p className="pb-4 text-center text-xs text-muted">Fuerza · v0.6.0</p>
+      <p className="pb-4 text-center text-xs text-muted">Fuerza · v0.7.0</p>
 
       <ConfirmDialog
         open={pending !== null}
